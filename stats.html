@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TinyLink · Link Stats</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                500: '#06b6d4',
+                600: '#0891b2',
+              },
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div
+      class="absolute inset-x-0 top-0 h-64 bg-gradient-to-br from-brand-600/40 via-slate-900 to-slate-900 pointer-events-none -z-10"
+    ></div>
+
+    <div class="max-w-3xl mx-auto px-4 py-8 md:py-10">
+      <!-- Shared header -->
+      <a
+        href="/"
+        class="inline-flex items-center gap-1 text-sm text-slate-300 hover:text-brand-100 mb-4"
+      >
+        <span>←</span>
+        <span>Back to dashboard</span>
+      </a>
+
+      <header class="mb-6">
+        <h1 class="text-3xl font-semibold tracking-tight">
+          Link <span class="text-brand-500">Analytics</span>
+        </h1>
+        <p class="text-sm text-slate-400 mt-1">
+          View total clicks, last activity, and destination for this short URL.
+        </p>
+      </header>
+
+      <!-- Loading / error state -->
+      <div
+        id="status"
+        class="text-sm text-slate-300 bg-slate-900/70 border border-white/5 rounded-2xl px-4 py-3"
+      >
+        Loading link details...
+      </div>
+
+      <!-- Content -->
+      <section
+        id="content"
+        class="hidden mt-4 bg-slate-900/80 border border-white/5 rounded-2xl shadow-xl shadow-black/40 p-5 md:p-6 backdrop-blur"
+      >
+        <!-- Short URL -->
+        <div class="mb-5">
+          <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">
+            Short URL
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              id="shortUrl"
+              class="inline-flex items-center gap-2 rounded-full bg-slate-950/70 border border-white/10 px-3 py-1.5 text-xs md:text-sm font-mono text-slate-100"
+            ></span>
+            <button
+              id="copyShortBtn"
+              class="text-[11px] px-3 py-1.5 rounded-full border border-white/10 bg-slate-950/60 text-slate-100 hover:border-brand-500 hover:text-brand-100"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3 mb-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                Short code
+              </p>
+              <div
+                class="inline-flex items-center gap-2 rounded-full bg-slate-950/70 border border-white/10 px-3 py-1.5 text-sm"
+              >
+                <span class="font-mono" id="code"></span>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                Total clicks
+              </p>
+              <div
+                class="inline-flex items-center gap-2 rounded-full bg-slate-950/70 border border-white/10 px-3 py-1.5"
+              >
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="font-semibold text-lg" id="clicks"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">
+              Target URL
+            </p>
+            <a
+              id="targetUrl"
+              href="#"
+              target="_blank"
+              class="inline-flex items-center gap-2 text-sm text-brand-100 break-all hover:underline"
+            >
+              <span id="targetUrlText"></span>
+              <span
+                class="text-[10px] px-2 py-0.5 rounded-full border border-brand-500/40 bg-brand-500/10"
+              >
+                Open
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="bg-slate-950/60 border border-white/5 rounded-xl p-4">
+            <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">
+              Last clicked
+            </p>
+            <p id="lastClicked" class="text-sm text-slate-100">—</p>
+            <p class="mt-2 text-[11px] text-slate-500">
+              Updated every time someone visits this short link.
+            </p>
+          </div>
+
+          <div class="bg-slate-950/60 border border-white/5 rounded-xl p-4">
+            <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">
+              Created at
+            </p>
+            <p id="createdAt" class="text-sm text-slate-100">—</p>
+            <p class="mt-2 text-[11px] text-slate-500">
+              When this short URL was first created.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="mt-8 text-center text-[11px] text-slate-500">
+        TinyLink · Minimal URL shortener · v1.0
+      </footer>
+    </div>
+
+    <!-- Toast -->
+    <div
+      id="toastStats"
+      class="fixed bottom-4 right-4 z-50 hidden rounded-xl bg-slate-900/95 border border-white/10 px-4 py-2 text-xs text-slate-100 shadow-lg shadow-black/40"
+    >
+      <span id="toastStatsMessage"></span>
+    </div>
+
+    <script>
+      var toastEl = document.getElementById('toastStats');
+      var toastMsg = document.getElementById('toastStatsMessage');
+      var toastTimer;
+
+      function showToast(message) {
+        toastMsg.textContent = message;
+        toastEl.classList.remove('hidden');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          toastEl.classList.add('hidden');
+        }, 2000);
+      }
+
+      async function loadStats() {
+        var parts = window.location.pathname.split('/');
+        var code = parts[2];
+        var baseOrigin = window.location.origin;
+
+        var statusEl = document.getElementById('status');
+        var contentEl = document.getElementById('content');
+
+        try {
+          var res = await fetch('/api/links/' + code);
+
+          if (!res.ok) {
+            statusEl.textContent = 'Link not found. It may have been deleted.';
+            statusEl.classList.remove('bg-slate-900/70');
+            statusEl.classList.add(
+              'bg-rose-900/40',
+              'border-rose-500/40',
+              'text-rose-100'
+            );
+            return;
+          }
+
+          var data = await res.json();
+
+          statusEl.classList.add('hidden');
+          contentEl.classList.remove('hidden');
+
+          var shortUrl = baseOrigin + '/' + data.code;
+          document.getElementById('shortUrl').textContent = shortUrl;
+
+          document.getElementById('code').textContent = data.code;
+          document.getElementById('clicks').textContent = data.total_clicks;
+
+          var targetUrlEl = document.getElementById('targetUrl');
+          var targetUrlTextEl = document.getElementById('targetUrlText');
+          targetUrlEl.href = data.target_url;
+          targetUrlTextEl.textContent = data.target_url;
+
+          document.getElementById('lastClicked').textContent = data.last_clicked
+            ? new Date(data.last_clicked).toLocaleString()
+            : 'Never';
+
+          document.getElementById('createdAt').textContent = new Date(
+            data.created_at
+          ).toLocaleString();
+
+          document.getElementById('copyShortBtn').onclick = async function () {
+            try {
+              await navigator.clipboard.writeText(shortUrl);
+              showToast('Short URL copied');
+            } catch (e) {
+              showToast(shortUrl);
+            }
+          };
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent =
+            'Failed to load stats. Please refresh the page.';
+        }
+      }
+
+      loadStats();
+    </script>
+  </body>
+</html>

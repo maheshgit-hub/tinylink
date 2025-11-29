@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/code/:code", "destination": "/stats.html" },
+    { "source": "/:code", "destination": "/api/redirect/:code" }
+  ]
+}

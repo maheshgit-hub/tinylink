@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TinyLink · Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#ecfeff',
+                100: '#cffafe',
+                500: '#06b6d4',
+                600: '#0891b2',
+                700: '#0f766e',
+              },
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <!-- Top gradient -->
+    <div
+      class="absolute inset-x-0 top-0 h-72 bg-gradient-to-br from-brand-600/40 via-slate-900 to-slate-900 pointer-events-none -z-10"
+    ></div>
+
+    <div class="max-w-6xl mx-auto px-4 py-6 md:py-8">
+      <!-- Header -->
+      <header
+        class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 md:mb-8"
+      >
+        <div>
+          <div
+            class="inline-flex items-center gap-2 rounded-full bg-slate-900/70 border border-white/5 px-3 py-1 mb-2"
+          >
+            <span
+              class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+            ></span>
+            <span class="text-xs text-emerald-200/80"
+              >Connected to Neon DB</span
+            >
+          </div>
+          <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">
+            TinyLink <span class="text-brand-100">Dashboard</span>
+          </h1>
+          <p class="text-xs md:text-sm text-slate-300/80 mt-1 max-w-xl">
+            Create, manage, and track short URLs with clear states and smooth
+            UX.
+          </p>
+        </div>
+        <div class="flex items-center gap-2 self-start md:self-auto">
+          <a
+            href="/healthz"
+            target="_blank"
+            class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-200 hover:border-brand-500/70 hover:text-brand-100 transition"
+          >
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            Health check
+          </a>
+        </div>
+      </header>
+
+      <!-- Main layout -->
+      <main
+        class="grid gap-6 items-start lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]"
+      >
+        <!-- Form card -->
+        <section
+          class="bg-slate-900/80 border border-white/5 rounded-2xl shadow-xl shadow-black/40 p-5 md:p-6 backdrop-blur"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-semibold flex items-center gap-2">
+                <span
+                  class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-600/80 text-xs"
+                >
+                  +
+                </span>
+                Create short link
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">
+                Inline validation, loading state, and clear success feedback.
+              </p>
+            </div>
+          </div>
+
+          <form id="createForm" class="space-y-4 mt-2" novalidate>
+            <!-- URL -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5"
+                >Target URL</label
+              >
+              <div class="relative">
+                <span
+                  class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs"
+                  >https://</span
+                >
+                <input
+                  id="urlInput"
+                  type="text"
+                  placeholder="example.com/your/long/link"
+                  class="w-full rounded-xl border border-white/10 bg-slate-950/60 pl-14 pr-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+              <p id="urlError" class="mt-1 text-xs text-rose-400 hidden"></p>
+            </div>
+
+            <!-- Code -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">
+                Custom code <span class="text-slate-500">(optional)</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <div
+                  class="flex-1 flex rounded-xl border border-white/10 bg-slate-950/60 overflow-hidden"
+                >
+                  <span
+                    class="px-3 py-2.5 text-xs md:text-sm text-slate-400 border-r border-white/5 bg-slate-900/80"
+                  >
+                    {{ baseUrl }}/
+                  </span>
+                  <input
+                    id="codeInput"
+                    type="text"
+                    minlength="6"
+                    maxlength="8"
+                    pattern="[A-Za-z0-9]{6,8}"
+                    placeholder="6–8 letters or numbers"
+                    class="flex-1 bg-transparent px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <p id="codeError" class="mt-1 text-xs text-rose-400 hidden"></p>
+            </div>
+
+            <!-- Form status row -->
+            <div class="flex items-center justify-between gap-3 pt-1">
+              <button
+                id="submitBtn"
+                type="submit"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-slate-950 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <span id="submitText">Create</span>
+                <span
+                  id="submitSpinner"
+                  class="hidden text-xs opacity-80 animate-pulse"
+                  >…</span
+                >
+              </button>
+
+              <p
+                id="formStatus"
+                class="text-xs text-slate-300 text-right flex-1"
+              ></p>
+            </div>
+          </form>
+
+          <p
+            class="mt-4 text-[11px] text-slate-500 border-t border-white/5 pt-3"
+          >
+            Hint: Leave the custom code empty to auto-generate a safe random
+            short code.
+          </p>
+        </section>
+
+        <!-- Table card -->
+        <section
+          class="bg-slate-900/80 border border-white/5 rounded-2xl shadow-xl shadow-black/40 p-5 md:p-6 backdrop-blur"
+        >
+          <!-- Filter + sort -->
+          <div class="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+            <div class="flex-1 relative">
+              <span
+                class="absolute inset-y-0 left-3 flex items-center text-slate-500 text-xs"
+                >🔍</span
+              >
+              <input
+                id="searchInput"
+                type="text"
+                placeholder="Filter by code or URL..."
+                class="w-full rounded-xl border border-white/10 bg-slate-950/60 pl-8 pr-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              />
+            </div>
+            <div class="flex gap-2">
+              <button
+                id="searchBtn"
+                class="px-3 py-2.5 rounded-xl border border-white/10 text-xs font-medium text-slate-100 bg-slate-950/60 hover:border-brand-500 hover:text-brand-100"
+              >
+                Search
+              </button>
+              <button
+                id="clearBtn"
+                class="px-3 py-2.5 rounded-xl border border-white/10 text-xs font-medium text-slate-300 bg-slate-950/40 hover:border-slate-500"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs text-slate-400">Links</p>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-slate-500 hidden sm:inline">Sort:</span>
+              <select
+                id="sortSelect"
+                class="bg-slate-950/70 border border-white/10 rounded-lg px-2 py-1 text-xs text-slate-100"
+              >
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="clicks_desc">Most clicks</option>
+                <option value="clicks_asc">Least clicks</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div
+            class="border border-white/5 rounded-xl overflow-hidden bg-slate-950/40"
+          >
+            <div class="max-h-[360px] overflow-auto">
+              <table class="w-full text-sm">
+                <thead
+                  class="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-400 border-b border-white/5"
+                >
+                  <tr>
+                    <th class="px-3 py-2 text-left">Code</th>
+                    <th class="px-3 py-2 text-left">Target</th>
+                    <th class="px-3 py-2 text-right">Clicks</th>
+                    <th class="px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="linksTableBody"
+                  class="divide-y divide-white/5"
+                ></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="mt-8 text-center text-[11px] text-slate-500">
+        TinyLink · Minimal URL shortener · v1.0
+      </footer>
+    </div>
+
+    <!-- Toast -->
+    <div
+      id="toast"
+      class="fixed bottom-4 right-4 z-50 hidden rounded-xl bg-slate-900/95 border border-white/10 px-4 py-2 text-xs text-slate-100 shadow-lg shadow-black/40"
+    >
+      <span id="toastMessage"></span>
+    </div>
+
+    <script>
+      // ------- State & helpers -------
+
+      var baseOrigin = window.location.origin;
+
+      var createForm = document.getElementById('createForm');
+      var urlInput = document.getElementById('urlInput');
+      var codeInput = document.getElementById('codeInput');
+      var urlError = document.getElementById('urlError');
+      var codeError = document.getElementById('codeError');
+      var submitBtn = document.getElementById('submitBtn');
+      var submitText = document.getElementById('submitText');
+      var submitSpinner = document.getElementById('submitSpinner');
+      var formStatus = document.getElementById('formStatus');
+
+      var tableBody = document.getElementById('linksTableBody');
+      var searchInput = document.getElementById('searchInput');
+      var searchBtn = document.getElementById('searchBtn');
+      var clearBtn = document.getElementById('clearBtn');
+      var sortSelect = document.getElementById('sortSelect');
+
+      var toastEl = document.getElementById('toast');
+      var toastMessage = document.getElementById('toastMessage');
+      var toastTimeout;
+
+      var linksCache = [];
+      var currentSearch = '';
+      var currentSort = 'newest';
+
+      function showToast(message) {
+        toastMessage.textContent = message;
+        toastEl.classList.remove('hidden');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function () {
+          toastEl.classList.add('hidden');
+        }, 2500);
+      }
+
+      function formatDate(value) {
+        if (!value) return 'Never';
+        try {
+          return new Date(value).toLocaleString();
+        } catch (e) {
+          return value;
+        }
+      }
+
+      function getSortedLinks() {
+        var arr = linksCache.slice();
+        arr.sort(function (a, b) {
+          if (currentSort === 'newest') {
+            return new Date(b.created_at) - new Date(a.created_at);
+          }
+          if (currentSort === 'oldest') {
+            return new Date(a.created_at) - new Date(b.created_at);
+          }
+          if (currentSort === 'clicks_desc') {
+            return (b.total_clicks || 0) - (a.total_clicks || 0);
+          }
+          if (currentSort === 'clicks_asc') {
+            return (a.total_clicks || 0) - (b.total_clicks || 0);
+          }
+          return 0;
+        });
+        return arr;
+      }
+
+      // ------- Fetch & render table (states: loading / empty / error / success) -------
+
+      async function fetchLinks(search) {
+        if (search === undefined) search = '';
+        currentSearch = search;
+
+        tableBody.innerHTML =
+          '<tr>' +
+          '<td colspan="4" class="px-3 py-4 text-center text-slate-400 text-xs">' +
+          'Loading links...' +
+          '</td>' +
+          '</tr>';
+
+        var url = '/api/links';
+        if (search && search.length > 0) {
+          url += '?search=' + encodeURIComponent(search);
+        }
+
+        try {
+          var res = await fetch(url);
+          if (!res.ok) {
+            tableBody.innerHTML =
+              '<tr>' +
+              '<td colspan="4" class="px-3 py-4 text-center text-rose-400 text-xs">' +
+              'Failed to load links. Please try again.' +
+              '</td>' +
+              '</tr>';
+            return;
+          }
+
+          var links = await res.json();
+          linksCache = links;
+          renderTable();
+        } catch (err) {
+          console.error(err);
+          tableBody.innerHTML =
+            '<tr>' +
+            '<td colspan="4" class="px-3 py-4 text-center text-rose-400 text-xs">' +
+            'Network error while loading links.' +
+            '</td>' +
+            '</tr>';
+        }
+      }
+
+      function renderTable() {
+        tableBody.innerHTML = '';
+
+        var links = getSortedLinks();
+
+        if (!links || links.length === 0) {
+          tableBody.innerHTML =
+            '<tr>' +
+            '<td colspan="4" class="px-3 py-6 text-center text-slate-500 text-xs">' +
+            'No links yet. Create one using the form on the left.' +
+            '</td>' +
+            '</tr>';
+          return;
+        }
+
+        links.forEach(function (link) {
+          var shortUrl = baseOrigin + '/' + link.code;
+          var lastClicked = link.last_clicked
+            ? formatDate(link.last_clicked)
+            : 'Never';
+          var createdAt = formatDate(link.created_at);
+
+          var row = document.createElement('tr');
+          row.className = 'hover:bg-slate-900/60 transition-colors';
+
+          // Code cell + short URL copy
+          var codeCell =
+            '<td class="px-3 py-2 align-top">' +
+            '<div class="flex flex-col gap-0.5">' +
+            '<a href="' +
+            shortUrl +
+            '" target="_blank" class="font-medium text-brand-100 hover:underline">' +
+            link.code +
+            '</a>' +
+            '<button class="text-[10px] text-slate-400 hover:text-slate-200 text-left truncate" data-copy="' +
+            shortUrl +
+            '">' +
+            shortUrl +
+            '</button>' +
+            '</div>' +
+            '</td>';
+
+          // Target URL cell with truncation + dates
+          var targetCell =
+            '<td class="px-3 py-2 align-top max-w-xs">' +
+            '<div class="text-xs text-slate-200 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap" title="' +
+            link.target_url +
+            '">' +
+            link.target_url +
+            '</div>' +
+            '<div class="text-[10px] text-slate-500 mt-1 space-y-0.5">' +
+            '<div>Created: ' +
+            createdAt +
+            '</div>' +
+            '<div>Last clicked: ' +
+            lastClicked +
+            '</div>' +
+            '</div>' +
+            '</td>';
+
+          // Clicks cell
+          var clicksCell =
+            '<td class="px-3 py-2 align-top text-right">' +
+            '<span class="inline-flex items-center justify-end gap-1 px-2 py-0.5 rounded-full bg-slate-900/80 border border-white/10 text-[11px] text-slate-100">' +
+            '<span class="w-1.5 h-1.5 rounded-full ' +
+            (link.total_clicks > 0 ? 'bg-emerald-400' : 'bg-slate-500') +
+            '"></span>' +
+            (link.total_clicks || 0) +
+            '</span>' +
+            '</td>';
+
+          // Actions cell
+          var actionsCell =
+            '<td class="px-3 py-2 align-top text-right space-x-1.5">' +
+            '<button class="text-[11px] text-brand-100 underline hover:text-brand-300" data-copy="' +
+            shortUrl +
+            '">Copy</button>' +
+            '<a href="/code/' +
+            link.code +
+            '" class="text-[11px] text-emerald-200 underline hover:text-emerald-100">Stats</a>' +
+            '<button class="text-[11px] text-rose-300 underline hover:text-rose-200" data-delete="' +
+            link.code +
+            '">Delete</button>' +
+            '</td>';
+
+          row.innerHTML = codeCell + targetCell + clicksCell + actionsCell;
+          tableBody.appendChild(row);
+        });
+      }
+
+      // ------- Form UX (inline validation, loading, success) -------
+
+      createForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        urlError.classList.add('hidden');
+        codeError.classList.add('hidden');
+        formStatus.textContent = '';
+
+        var url = urlInput.value.trim();
+        var code = codeInput.value.trim() || undefined;
+
+        if (!url) {
+          urlError.textContent = 'Please enter a URL.';
+          urlError.classList.remove('hidden');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitSpinner.classList.remove('hidden');
+        submitText.textContent = 'Creating…';
+
+        try {
+          var res = await fetch('/api/links', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url, code: code }),
+          });
+
+          var data = await res.json();
+
+          if (!res.ok) {
+            if (res.status === 400 && data.error) {
+              if (data.error.toLowerCase().indexOf('url') !== -1) {
+                urlError.textContent = data.error;
+                urlError.classList.remove('hidden');
+              } else {
+                codeError.textContent = data.error;
+                codeError.classList.remove('hidden');
+              }
+            } else if (res.status === 409) {
+              codeError.textContent =
+                'This code is already in use. Try another.';
+              codeError.classList.remove('hidden');
+            } else {
+              formStatus.textContent =
+                'Something went wrong. Please try again.';
+            }
+          } else {
+            formStatus.textContent = '';
+            showToast('Short link created');
+            urlInput.value = '';
+            codeInput.value = '';
+            await fetchLinks(currentSearch);
+          }
+        } catch (err) {
+          console.error(err);
+          formStatus.textContent =
+            'Network error. Please check your connection.';
+        } finally {
+          submitBtn.disabled = false;
+          submitSpinner.classList.add('hidden');
+          submitText.textContent = 'Create';
+        }
+      });
+
+      // ------- Table actions: copy, delete -------
+
+      tableBody.addEventListener('click', async function (e) {
+        var copy = e.target.getAttribute('data-copy');
+        var del = e.target.getAttribute('data-delete');
+
+        if (copy) {
+          try {
+            await navigator.clipboard.writeText(copy);
+            showToast('Copied: ' + copy);
+          } catch (err) {
+            showToast(copy);
+          }
+        }
+
+        if (del) {
+          if (!confirm('Delete link "' + del + '"?')) return;
+          try {
+            var res = await fetch('/api/links/' + del, { method: 'DELETE' });
+            if (res.status === 204) {
+              showToast('Link deleted');
+              fetchLinks(currentSearch);
+            } else {
+              showToast('Failed to delete link');
+            }
+          } catch (errDel) {
+            showToast('Error deleting link');
+          }
+        }
+      });
+
+      // ------- Filter & sort -------
+
+      searchBtn.addEventListener('click', function () {
+        fetchLinks(searchInput.value.trim());
+      });
+
+      clearBtn.addEventListener('click', function () {
+        searchInput.value = '';
+        fetchLinks('');
+      });
+
+      sortSelect.addEventListener('change', function () {
+        currentSort = sortSelect.value;
+        renderTable();
+      });
+
+      // Initial load (empty state -> loading -> success/empty/error)
+      fetchLinks('');
+    </script>
+  </body>
+</html>
