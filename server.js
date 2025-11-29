@@ -6,14 +6,10 @@ import { fileURLToPath } from 'url';
 
 const { Pool } = pkg;
 
-// Resolve __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Load environment variables
 dotenv.config();
 
-// Connect to Neon PostgreSQL
+// --- DB setup (Neon PostgreSQL) ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -21,7 +17,6 @@ const pool = new Pool({
   },
 });
 
-// Optional: quick DB connection test
 pool
   .connect()
   .then((client) => {
@@ -32,16 +27,20 @@ pool
     console.error('❌ Error connecting to DB:', err);
   });
 
-// Create Express app
+// --- Express app setup ---
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware to parse JSON and forms
+// ESM __dirname workaround
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Middleware to parse JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static frontend from "public" folder
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files (index.html, stats.html, etc.) from project root
+app.use(express.static(__dirname));
 
 // Helper functions
 function isValidUrl(url) {
@@ -67,19 +66,31 @@ function generateCode(length = 6) {
   return result;
 }
 
+// --- Frontend routes ---
+
+// Dashboard: serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Stats page for a given code: serve stats.html
+app.get('/code/:code', (req, res) => {
+  res.sendFile(path.join(__dirname, 'stats.html'));
+});
+
+// --- API routes ---
+
 // Create new short link
 app.post('/api/links', async (req, res) => {
   try {
     const { url, code: customCode } = req.body;
 
-    // Validate URL
     if (!url || !isValidUrl(url)) {
       return res.status(400).json({ error: 'Invalid URL' });
     }
 
     let code = customCode?.trim();
 
-    // If custom code is provided, validate and check uniqueness
     if (code) {
       if (!isValidCode(code)) {
         return res.status(400).json({
@@ -94,7 +105,6 @@ app.post('/api/links', async (req, res) => {
         return res.status(409).json({ error: 'Code already exists' });
       }
     } else {
-      // Generate a unique code
       let unique = false;
       while (!unique) {
         const candidate = generateCode(6);
@@ -109,7 +119,6 @@ app.post('/api/links', async (req, res) => {
       }
     }
 
-    // Insert into DB
     const insert = await pool.query(
       `INSERT INTO links (code, target_url)
        VALUES ($1, $2)
@@ -185,19 +194,11 @@ app.delete('/api/links/:code', async (req, res) => {
       return res.status(404).json({ error: 'Link not found' });
     }
 
-    // No content
     res.status(204).send();
   } catch (err) {
     console.error('Error deleting link:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
-
-// =================== PAGE ROUTES =================== //
-
-// Stats page: serve stats.html for a given code
-app.get('/code/:code', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'stats.html'));
 });
 
 // Health check endpoint
@@ -209,47 +210,7 @@ app.get('/healthz', (req, res) => {
   });
 });
 
-// Redirect route – must be after /api, /code, /healthz
-app.get('/:code', async (req, res) => {
-  const { code } = req.params;
-
-  // Avoid treating known paths as codes
-  if (code === 'api' || code === 'healthz' || code === 'code') {
-    return res.status(404).send('Not found');
-  }
-
-  try {
-    // Find link by code
-    const result = await pool.query(
-      'SELECT target_url FROM links WHERE code = $1',
-      [code]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).send('Short link not found');
-    }
-
-    const targetUrl = result.rows[0].target_url;
-
-    // Update click count and last_clicked
-    await pool.query(
-      `UPDATE links
-       SET total_clicks = total_clicks + 1,
-           last_clicked = NOW()
-       WHERE code = $1`,
-      [code]
-    );
-
-    // Redirect to original URL
-    res.redirect(302, targetUrl);
-  } catch (err) {
-    console.error('Error in redirect route:', err);
-    res.status(500).send('Internal server error');
-  }
-});
-
-// =================== START SERVER =================== //
-
+// Start server
 app.listen(port, () => {
   console.log(`TinyLink server running on http://localhost:${port}`);
 });

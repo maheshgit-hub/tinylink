@@ -55,7 +55,7 @@
         </div>
         <div class="flex items-center gap-2 self-start md:self-auto">
           <a
-            href="/healthz"
+            href="/api/healthz"
             target="_blank"
             class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-200 hover:border-brand-500/70 hover:text-brand-100 transition"
           >
@@ -394,7 +394,6 @@
           var row = document.createElement('tr');
           row.className = 'hover:bg-slate-900/60 transition-colors';
 
-          // Code cell + short URL copy
           var codeCell =
             '<td class="px-3 py-2 align-top">' +
             '<div class="flex flex-col gap-0.5">' +
@@ -411,7 +410,6 @@
             '</div>' +
             '</td>';
 
-          // Target URL cell with truncation + dates
           var targetCell =
             '<td class="px-3 py-2 align-top max-w-xs">' +
             '<div class="text-xs text-slate-200 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap" title="' +
@@ -429,7 +427,6 @@
             '</div>' +
             '</td>';
 
-          // Clicks cell
           var clicksCell =
             '<td class="px-3 py-2 align-top text-right">' +
             '<span class="inline-flex items-center justify-end gap-1 px-2 py-0.5 rounded-full bg-slate-900/80 border border-white/10 text-[11px] text-slate-100">' +
@@ -440,7 +437,6 @@
             '</span>' +
             '</td>';
 
-          // Actions cell
           var actionsCell =
             '<td class="px-3 py-2 align-top text-right space-x-1.5">' +
             '<button class="text-[11px] text-brand-100 underline hover:text-brand-300" data-copy="' +
@@ -459,7 +455,7 @@
         });
       }
 
-      // ------- Form UX (inline validation, loading, success) -------
+      // ------- Form UX -------
 
       createForm.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -571,7 +567,7 @@
         renderTable();
       });
 
-      // Initial load (empty state -> loading -> success/empty/error)
+      // Initial load
       fetchLinks('');
     </script>
   </body>
