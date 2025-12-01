@@ -159,83 +159,102 @@
     </div>
 
     <script>
-      var toastEl = document.getElementById('toastStats');
-      var toastMsg = document.getElementById('toastStatsMessage');
-      var toastTimer;
-
       function showToast(message) {
-        toastMsg.textContent = message;
-        toastEl.classList.remove('hidden');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () {
-          toastEl.classList.add('hidden');
+        const toast = document.getElementById('toastStats');
+        const msg = document.getElementById('toastStatsMessage');
+
+        msg.textContent = message;
+        toast.classList.remove('hidden');
+
+        setTimeout(() => {
+          toast.classList.add('hidden');
         }, 2000);
       }
 
-      async function loadStats() {
-        var parts = window.location.pathname.split('/');
-        var code = parts[2];
-        var baseOrigin = window.location.origin;
+      function getCodeFromUrl() {
+        const url = new URL(window.location.href);
 
-        var statusEl = document.getElementById('status');
-        var contentEl = document.getElementById('content');
+        // 1) Try path: /code/:code
+        const segments = url.pathname.split('/').filter(Boolean);
+        // segments example: ["code", "n4o2YP"]
+        if (segments.length >= 2 && segments[0] === 'code') {
+          return segments[1];
+        }
+
+        // 2) Fallback: ?code=xyz
+        const fromQuery = url.searchParams.get('code');
+        if (fromQuery) return fromQuery;
+
+        return null;
+      }
+
+      async function loadStats() {
+        const baseOrigin = window.location.origin;
+        const statusEl = document.getElementById('status');
+        const contentEl = document.getElementById('content');
+
+        const code = getCodeFromUrl();
+        console.log('Stats page code =', code);
+
+        if (!code) {
+          statusEl.textContent = 'No short code provided in URL.';
+          statusEl.classList.add(
+            'bg-rose-900/40',
+            'border-rose-500/40',
+            'text-rose-200'
+          );
+          return;
+        }
 
         try {
-          var res = await fetch('/api/links/' + code);
+          const res = await fetch('/api/links/' + encodeURIComponent(code));
 
           if (!res.ok) {
-            statusEl.textContent = 'Link not found. It may have been deleted.';
-            statusEl.classList.remove('bg-slate-900/70');
+            statusEl.textContent = 'Link not found or deleted.';
             statusEl.classList.add(
               'bg-rose-900/40',
               'border-rose-500/40',
-              'text-rose-100'
+              'text-rose-200'
             );
             return;
           }
 
-          var data = await res.json();
+          const data = await res.json();
 
           statusEl.classList.add('hidden');
           contentEl.classList.remove('hidden');
 
-          var shortUrl = baseOrigin + '/' + data.code;
-          document.getElementById('shortUrl').textContent = shortUrl;
+          const shortUrl = baseOrigin + '/' + data.code;
 
+          document.getElementById('shortUrl').textContent = shortUrl;
           document.getElementById('code').textContent = data.code;
           document.getElementById('clicks').textContent = data.total_clicks;
-
-          var targetUrlEl = document.getElementById('targetUrl');
-          var targetUrlTextEl = document.getElementById('targetUrlText');
-          targetUrlEl.href = data.target_url;
-          targetUrlTextEl.textContent = data.target_url;
-
+          document.getElementById('targetUrl').href = data.target_url;
+          document.getElementById('targetUrlText').textContent =
+            data.target_url;
           document.getElementById('lastClicked').textContent = data.last_clicked
             ? new Date(data.last_clicked).toLocaleString()
             : 'Never';
-
           document.getElementById('createdAt').textContent = new Date(
             data.created_at
           ).toLocaleString();
 
-          document.getElementById('copyShortBtn').onclick = async function () {
+          document.getElementById('copyShortBtn').onclick = async () => {
             try {
               await navigator.clipboard.writeText(shortUrl);
-              showToast('Short URL copied');
-            } catch (e) {
+              showToast('Copied!');
+            } catch {
               showToast(shortUrl);
             }
           };
         } catch (err) {
           console.error(err);
-          statusEl.textContent =
-            'Failed to load stats. Please refresh the page.';
+          statusEl.textContent = 'Error loading stats. Refresh the page.';
         }
       }
 
+      // Load once on page load
       loadStats();
-      // Refresh stats every 5 seconds
-      setInterval(loadStats, 1000);
     </script>
   </body>
 </html>
