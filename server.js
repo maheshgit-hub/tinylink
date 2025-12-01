@@ -202,12 +202,46 @@ app.delete('/api/links/:code', async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/healthz', (req, res) => {
+app.get('/api/healthz', (req, res) => {
   res.status(200).json({
     ok: true,
     version: '1.0',
     uptime: process.uptime(),
   });
+});
+
+// Redirect short code → target URL and increment clicks
+app.get('/:code', async (req, res) => {
+  const { code } = req.params;
+
+  try {
+    // Find target URL
+    const result = await pool.query(
+      'SELECT target_url FROM links WHERE code = $1',
+      [code]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).send('Short link not found');
+    }
+
+    const targetUrl = result.rows[0].target_url;
+
+    // Update click count + last_clicked
+    await pool.query(
+      `UPDATE links
+       SET total_clicks = total_clicks + 1,
+           last_clicked = NOW()
+       WHERE code = $1`,
+      [code]
+    );
+
+    // Redirect to original URL
+    return res.redirect(targetUrl);
+  } catch (err) {
+    console.error('Error handling redirect:', err);
+    return res.status(500).send('Internal server error');
+  }
 });
 
 // Start server
